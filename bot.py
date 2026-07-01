@@ -5,7 +5,7 @@ import os
 TOKEN = '8948678531:AAGPocItVNaxhjcSLl9TuC_mCJ9tzHaKMkw'
 bot = telebot.TeleBot(TOKEN)
 
-ADMIN_ID = @Stimorolll   # ←←← ОБОВ'ЯЗКОВО ЗАМІНИ НА СВІЙ TELEGRAM ID
+ADMIN_ID = 740442241   # ←←← ОБОВ'ЯЗКОВО ЗАМІНИ НА СВІЙ TELEGRAM ID
 
 # Зберігання контенту
 content = {
