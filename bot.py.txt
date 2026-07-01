@@ -2,7 +2,7 @@ import telebot
 from telebot import types
 import os
 
-TOKEN = 'YOUR_BOT_TOKEN_HERE'
+TOKEN = '8948678531:AAGPocItVNaxhjcSLl9TuC_mCJ9tzHaKMkw'
 bot = telebot.TeleBot(TOKEN)
 
 ADMIN_ID = @Stimorolll   # ←←← ОБОВ'ЯЗКОВО ЗАМІНИ НА СВІЙ TELEGRAM ID
