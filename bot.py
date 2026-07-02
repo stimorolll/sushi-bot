@@ -4,7 +4,7 @@ from telebot import types
 TOKEN = '8948678531:AAGPocItVNaxhjcSLl9TuC_mCJ9tzHaKMkw'
 bot = telebot.TeleBot(TOKEN)
 
-ADMIN_ID = 740442241   # ← ЗАМІНИ НА СВІЙ ID
+ADMIN_ID = 740442241   # ← ЗАМІНИ
 
 content = {
     "kasir_complaints": {"text": "ЖАЛОБИ GOOGLE CHOICE\n\nТекст відсутній", "photo": None, "video": None},
@@ -111,17 +111,18 @@ def callback_handler(call):
         user_state.pop(user_id, None)
         return
 
-    # === ЗАХИЩЕНІ РОЛІ (з паролем) ===
+    # Захищені ролі
     if data in ["role_kasir", "role_sushi", "role_manager"]:
         role_key = data.split("_")[1]
-        bot.edit_message_text(f"🔐 Введіть пароль для доступу до **{ROLES[role_key]['name']}**:", 
+        bot.edit_message_text(f"🔐 Введіть пароль для **{ROLES[role_key]['name']}**:", 
                             call.message.chat.id, call.message.message_id, parse_mode='Markdown')
         user_state[user_id] = {"step": "waiting_password", "role": role_key}
         return
 
-    # === РОЛІ БЕЗ ПАРОЛЯ ===
-    if data == "role_courier":
-        item = content["courier"]
+    # Ролі без пароля
+    if data in ["role_courier", "role_logist"]:
+        key = "courier" if data == "role_courier" else "logist"
+        item = content[key]
         if item.get("photo"):
             bot.send_photo(call.message.chat.id, item["photo"], caption=item["text"], parse_mode='Markdown')
         elif item.get("video"):
@@ -130,22 +131,12 @@ def callback_handler(call):
             bot.send_message(call.message.chat.id, item["text"], parse_mode='Markdown')
         return
 
-    if data == "role_logist":
-        item = content["logist"]
-        if item.get("photo"):
-            bot.send_photo(call.message.chat.id, item["photo"], caption=item["text"], parse_mode='Markdown')
-        elif item.get("video"):
-            bot.send_video(call.message.chat.id, item["video"], caption=item["text"], parse_mode='Markdown')
-        else:
-            bot.send_message(call.message.chat.id, item["text"], parse_mode='Markdown')
-        return
-
-    # Адмін-панель
+    # Адмін панель
     if user_id == ADMIN_ID and data == "admin_edit_content":
         markup = types.InlineKeyboardMarkup(row_width=1)
         for key, name in sections.items():
             markup.add(types.InlineKeyboardButton(name, callback_data=f"edit_{key}"))
-        bot.edit_message_text("Оберіть розділ для редагування:", call.message.chat.id, call.message.message_id, reply_markup=markup)
+        bot.edit_message_text("Оберіть розділ:", call.message.chat.id, call.message.message_id, reply_markup=markup)
         return
 
     if user_id == ADMIN_ID and data.startswith("edit_"):
@@ -156,8 +147,7 @@ def callback_handler(call):
         markup.add(types.InlineKeyboardButton("Завантажити фото", callback_data="change_photo"))
         markup.add(types.InlineKeyboardButton("Завантажити відео", callback_data="change_video"))
         markup.add(types.InlineKeyboardButton("Назад", callback_data="admin_edit_content"))
-        bot.edit_message_text(f"Редагуємо:\n**{sections.get(section, section)}**", 
-                            call.message.chat.id, call.message.message_id, parse_mode='Markdown')
+        bot.edit_message_text(f"Редагуємо:\n**{sections[section]}**", call.message.chat.id, call.message.message_id, parse_mode='Markdown')
         bot.send_message(call.message.chat.id, "Оберіть дію:", reply_markup=markup)
         return
 
@@ -171,15 +161,19 @@ def callback_handler(call):
             bot.send_message(call.message.chat.id, "Надішліть нове відео:")
         return
 
-    # Відображення контенту захищених ролей
+    # === ВІДОВЖЕННЯ КОНТЕНТУ (ВИПРАВЛЕНО) ===
     if data in content:
         item = content[data]
-        text = item["text"]
-        if item.get("photo"):
-            bot.send_photo(call.message.chat.id, item["photo"], caption=text, parse_mode='Markdown')
-        elif item.get("video"):
-            bot.send_video(call.message.chat.id, item["video"], caption=text, parse_mode='Markdown')
-        else:
+        text = item["text"] or "Текст відсутній"
+        
+        try:
+            if item.get("photo"):
+                bot.send_photo(call.message.chat.id, item["photo"], caption=text, parse_mode='Markdown')
+            elif item.get("video"):
+                bot.send_video(call.message.chat.id, item["video"], caption=text, parse_mode='Markdown')
+            else:
+                bot.send_message(call.message.chat.id, text, parse_mode='Markdown')
+        except Exception as e:
             bot.send_message(call.message.chat.id, text, parse_mode='Markdown')
 
 @bot.message_handler(content_types=['text', 'photo', 'video'])
@@ -201,10 +195,10 @@ def handle_input(message):
             elif role == "manager":
                 bot.send_message(message.chat.id, "Оберіть розділ:", reply_markup=manager_menu())
         else:
-            bot.send_message(message.chat.id, "❌ Неправильний пароль. Спробуйте ще раз.")
+            bot.send_message(message.chat.id, "❌ Неправильний пароль.")
         return
 
-    # Обробка редагування від адміна
+    # Редагування адміном
     if "sub_action" in state:
         section = state["section"]
         if state["sub_action"] == "change_text":
@@ -213,11 +207,11 @@ def handle_input(message):
         elif state["sub_action"] == "change_photo" and message.photo:
             content[section]["photo"] = message.photo[-1].file_id
             content[section]["video"] = None
-            bot.send_message(message.chat.id, "✅ Фото завантажено!")
+            bot.send_message(message.chat.id, "✅ Фото успішно завантажено!")
         elif state["sub_action"] == "change_video" and message.video:
             content[section]["video"] = message.video.file_id
             content[section]["photo"] = None
-            bot.send_message(message.chat.id, "✅ Відео завантажено!")
+            bot.send_message(message.chat.id, "✅ Відео успішно завантажено!")
 
         user_state[user_id] = {"action": "edit_section", "section": section}
 
