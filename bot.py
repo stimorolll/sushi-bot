@@ -4,9 +4,8 @@ from telebot import types
 TOKEN = '8948678531:AAGPocItVNaxhjcSLl9TuC_mCJ9tzHaKMkw'
 bot = telebot.TeleBot(TOKEN)
 
-ADMIN_ID = 740442241   # ← ЗАМІНИ НА СВІЙ TELEGRAM ID
+ADMIN_ID = 740442241   # ← ЗАМІНИ НА СВІЙ ID
 
-# Контент усіх розділів
 content = {
     "kasir_complaints": {"text": "ЖАЛОБИ GOOGLE CHOICE\n\nТекст відсутній", "photo": None, "video": None},
     "kasir_duties": {"text": "ОБОВ'ЯЗКИ КАСИРА\n\nТекст відсутній", "photo": None, "video": None},
@@ -34,7 +33,6 @@ ROLES = {
     "manager": {"name": "Управляючий", "password": "1212"}
 }
 
-# Назви розділів для адміна
 sections = {
     "kasir_complaints": "Касир → Жалобы Google Choice",
     "kasir_duties": "Касир → Обов'язки",
@@ -51,7 +49,6 @@ sections = {
     "manager_internship": "Управляючий → Стажировка"
 }
 
-# ==================== МЕНЮ ====================
 def main_menu():
     markup = types.InlineKeyboardMarkup(row_width=1)
     markup.add(types.InlineKeyboardButton("👨‍💼 Касир", callback_data="role_kasir"))
@@ -93,7 +90,6 @@ def admin_main_menu():
     markup.add(types.InlineKeyboardButton("🏠 Головне меню", callback_data="main_menu"))
     return markup
 
-# ==================== START ====================
 @bot.message_handler(commands=['start'])
 def start(message):
     if message.from_user.id == ADMIN_ID:
@@ -102,7 +98,6 @@ def start(message):
     else:
         bot.send_message(message.chat.id, "👋 Ласкаво просимо!\n\nОберіть свою роль:", reply_markup=main_menu())
 
-# ==================== CALLBACK ====================
 @bot.callback_query_handler(func=lambda call: True)
 def callback_handler(call):
     user_id = call.from_user.id
@@ -113,9 +108,39 @@ def callback_handler(call):
             bot.edit_message_text("Оберіть дію:", call.message.chat.id, call.message.message_id, reply_markup=admin_main_menu())
         else:
             bot.edit_message_text("Оберіть свою роль:", call.message.chat.id, call.message.message_id, reply_markup=main_menu())
+        user_state.pop(user_id, None)
         return
 
-    # Адмін панель
+    # === ЗАХИЩЕНІ РОЛІ (з паролем) ===
+    if data in ["role_kasir", "role_sushi", "role_manager"]:
+        role_key = data.split("_")[1]
+        bot.edit_message_text(f"🔐 Введіть пароль для доступу до **{ROLES[role_key]['name']}**:", 
+                            call.message.chat.id, call.message.message_id, parse_mode='Markdown')
+        user_state[user_id] = {"step": "waiting_password", "role": role_key}
+        return
+
+    # === РОЛІ БЕЗ ПАРОЛЯ ===
+    if data == "role_courier":
+        item = content["courier"]
+        if item.get("photo"):
+            bot.send_photo(call.message.chat.id, item["photo"], caption=item["text"], parse_mode='Markdown')
+        elif item.get("video"):
+            bot.send_video(call.message.chat.id, item["video"], caption=item["text"], parse_mode='Markdown')
+        else:
+            bot.send_message(call.message.chat.id, item["text"], parse_mode='Markdown')
+        return
+
+    if data == "role_logist":
+        item = content["logist"]
+        if item.get("photo"):
+            bot.send_photo(call.message.chat.id, item["photo"], caption=item["text"], parse_mode='Markdown')
+        elif item.get("video"):
+            bot.send_video(call.message.chat.id, item["video"], caption=item["text"], parse_mode='Markdown')
+        else:
+            bot.send_message(call.message.chat.id, item["text"], parse_mode='Markdown')
+        return
+
+    # Адмін-панель
     if user_id == ADMIN_ID and data == "admin_edit_content":
         markup = types.InlineKeyboardMarkup(row_width=1)
         for key, name in sections.items():
@@ -123,7 +148,6 @@ def callback_handler(call):
         bot.edit_message_text("Оберіть розділ для редагування:", call.message.chat.id, call.message.message_id, reply_markup=markup)
         return
 
-    # Адмін обрав розділ
     if user_id == ADMIN_ID and data.startswith("edit_"):
         section = data[5:]
         user_state[user_id] = {"action": "edit_section", "section": section}
@@ -132,11 +156,11 @@ def callback_handler(call):
         markup.add(types.InlineKeyboardButton("Завантажити фото", callback_data="change_photo"))
         markup.add(types.InlineKeyboardButton("Завантажити відео", callback_data="change_video"))
         markup.add(types.InlineKeyboardButton("Назад", callback_data="admin_edit_content"))
-        bot.edit_message_text(f"Редагуємо:\n**{sections[section]}**", call.message.chat.id, call.message.message_id, parse_mode='Markdown')
-        bot.send_message(call.message.chat.id, "Що хочете зробити?", reply_markup=markup)
+        bot.edit_message_text(f"Редагуємо:\n**{sections.get(section, section)}**", 
+                            call.message.chat.id, call.message.message_id, parse_mode='Markdown')
+        bot.send_message(call.message.chat.id, "Оберіть дію:", reply_markup=markup)
         return
 
-    # Режим редагування
     if user_id == ADMIN_ID and data in ["change_text", "change_photo", "change_video"]:
         user_state[user_id]["sub_action"] = data
         if data == "change_text":
@@ -147,68 +171,55 @@ def callback_handler(call):
             bot.send_message(call.message.chat.id, "Надішліть нове відео:")
         return
 
-    # Відображення контенту
+    # Відображення контенту захищених ролей
     if data in content:
         item = content[data]
         text = item["text"]
-        if item["photo"]:
+        if item.get("photo"):
             bot.send_photo(call.message.chat.id, item["photo"], caption=text, parse_mode='Markdown')
-        elif item["video"]:
+        elif item.get("video"):
             bot.send_video(call.message.chat.id, item["video"], caption=text, parse_mode='Markdown')
         else:
             bot.send_message(call.message.chat.id, text, parse_mode='Markdown')
 
-    # Ролі без пароля
-    if data == "role_courier":
-        bot.send_message(call.message.chat.id, "🚴 **КУР'ЄРИ**", parse_mode='Markdown')
-        bot.send_message(call.message.chat.id, content["courier"]["text"])
-    if data == "role_logist":
-        bot.send_message(call.message.chat.id, "📦 **ЛОГІСТ**", parse_mode='Markdown')
-        bot.send_message(call.message.chat.id, content["logist"]["text"])
-
-# ==================== ОБРОБКА ПОВІДОМЛЕНЬ ====================
 @bot.message_handler(content_types=['text', 'photo', 'video'])
-def handle_content(message):
+def handle_input(message):
     user_id = message.from_user.id
-    if user_id not in user_state or "sub_action" not in user_state[user_id]:
+    if user_id not in user_state:
         return
 
     state = user_state[user_id]
-    section = state["section"]
 
-    if state["sub_action"] == "change_text":
-        content[section]["text"] = message.text
-        bot.send_message(message.chat.id, "✅ Текст оновлено!")
-    elif state["sub_action"] == "change_photo" and message.photo:
-        content[section]["photo"] = message.photo[-1].file_id
-        content[section]["video"] = None
-        bot.send_message(message.chat.id, "✅ Фото завантажено!")
-    elif state["sub_action"] == "change_video" and message.video:
-        content[section]["video"] = message.video.file_id
-        content[section]["photo"] = None
-        bot.send_message(message.chat.id, "✅ Відео завантажено!")
-
-    # Повернення в меню редагування
-    user_state[user_id] = {"action": "edit_section", "section": section}
-
-# Обробка пароля
-@bot.message_handler(func=lambda message: True)
-def handle_password(message):
-    user_id = message.from_user.id
-    if user_id not in user_state or user_state[user_id].get("step") != "waiting_password":
+    if state.get("step") == "waiting_password":
+        role = state["role"]
+        if message.text.strip() == ROLES[role]["password"]:
+            bot.send_message(message.chat.id, f"✅ Доступ дозволено!\n**{ROLES[role]['name']}**", parse_mode='Markdown')
+            if role == "kasir":
+                bot.send_message(message.chat.id, "Оберіть розділ:", reply_markup=kasir_menu())
+            elif role == "sushi":
+                bot.send_message(message.chat.id, "Оберіть розділ:", reply_markup=sushi_menu())
+            elif role == "manager":
+                bot.send_message(message.chat.id, "Оберіть розділ:", reply_markup=manager_menu())
+        else:
+            bot.send_message(message.chat.id, "❌ Неправильний пароль. Спробуйте ще раз.")
         return
 
-    role = user_state[user_id]["role"]
-    if message.text.strip() == ROLES[role]["password"]:
-        bot.send_message(message.chat.id, f"✅ Доступ дозволено!\n**{ROLES[role]['name']}**", parse_mode='Markdown')
-        if role == "kasir":
-            bot.send_message(message.chat.id, "Оберіть розділ:", reply_markup=kasir_menu())
-        elif role == "sushi":
-            bot.send_message(message.chat.id, "Оберіть розділ:", reply_markup=sushi_menu())
-        elif role == "manager":
-            bot.send_message(message.chat.id, "Оберіть розділ:", reply_markup=manager_menu())
-    else:
-        bot.send_message(message.chat.id, "❌ Неправильний пароль.")
+    # Обробка редагування від адміна
+    if "sub_action" in state:
+        section = state["section"]
+        if state["sub_action"] == "change_text":
+            content[section]["text"] = message.text
+            bot.send_message(message.chat.id, "✅ Текст оновлено!")
+        elif state["sub_action"] == "change_photo" and message.photo:
+            content[section]["photo"] = message.photo[-1].file_id
+            content[section]["video"] = None
+            bot.send_message(message.chat.id, "✅ Фото завантажено!")
+        elif state["sub_action"] == "change_video" and message.video:
+            content[section]["video"] = message.video.file_id
+            content[section]["photo"] = None
+            bot.send_message(message.chat.id, "✅ Відео завантажено!")
 
-print("🤖 Бот з адмін-панеллю запущений...")
+        user_state[user_id] = {"action": "edit_section", "section": section}
+
+print("🤖 Бот запущений...")
 bot.infinity_polling()
