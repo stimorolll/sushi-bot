@@ -8,8 +8,12 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 
-TOKEN = os.getenv("8948678531:AAGPocItVNaxhjcSLl9TuC_mCJ9tzHaKMkw")  # Буде брати з змінних Render
-ADMIN_ID = 740442241            # ← ЗАМІНИ НА СВІЙ ID
+# === ЗМІННІ СЕРЕДОВИЩА (для Render) ===
+TOKEN = os.getenv("8948678531:AAGPocItVNaxhjcSLl9TuC_mCJ9tzHaKMkw")
+ADMIN_ID = int(os.getenv("740442241", 0))   # Якщо не вказано — 0
+
+if not TOKEN:
+    raise ValueError("BOT_TOKEN не знайдено в змінних середовища!")
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
@@ -44,52 +48,44 @@ def main_menu():
     ]
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
-# ====================== START ======================
 @dp.message(Command("start"))
 async def start_cmd(message: types.Message):
     if message.from_user.id == ADMIN_ID:
-        await message.answer("👑 Адмін панель активована", reply_markup=main_menu())
+        await message.answer("👑 Адмін-панель активована", reply_markup=main_menu())
     else:
         await message.answer("👋 Ласкаво просимо!\nОберіть свою роль:", reply_markup=main_menu())
 
-# ====================== CALLBACK ======================
 @dp.callback_query()
 async def callback_handler(callback: types.CallbackQuery):
     data = callback.data
     user_id = callback.from_user.id
 
-    # Ролі з паролем
     if data in ["role_kasir", "role_sushi", "role_manager"]:
         role = data.split("_")[1]
         user_state[user_id] = {"step": "password", "role": role}
-        await callback.message.edit_text(f"🔐 Введіть пароль для {role.upper()}:")
+        await callback.message.edit_text(f"🔐 Введіть пароль для доступу до **{role.upper()}**:")
         return
 
-    # Відображення контенту
     if data in content:
         item = content[data]
-        if item["photo"]:
+        if item.get("photo"):
             await callback.message.answer_photo(item["photo"], caption=item["text"])
         else:
             await callback.message.answer(item["text"])
-        return
 
 @dp.message()
-async def handle_message(message: types.Message):
+async def handle_text(message: types.Message):
     user_id = message.from_user.id
-    if user_id not in user_state:
+    if user_id not in user_state or user_state[user_id].get("step") != "password":
         return
 
-    state = user_state[user_id]
-    if state.get("step") == "password":
-        # Тут можна додати перевірку пароля
-        await message.answer("✅ Доступ дозволено (тимчасово)")
-        user_state.pop(user_id)
+    # Тимчасова перевірка пароля (можна розширити)
+    await message.answer("✅ Доступ дозволено (тимчасово)")
+    user_state.pop(user_id, None)
 
-# ====================== ЗАПУСК ======================
 async def main():
-    # Webhook налаштування
     await bot.delete_webhook(drop_pending_updates=True)
+    print("🤖 Бот запущений на Webhook...")
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
