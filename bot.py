@@ -1,219 +1,96 @@
-import telebot
-from telebot import types
+from aiogram import Bot, Dispatcher, types
+from aiogram.filters import Command
+from aiogram import F
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+import asyncio
+import os
+import logging
 
-TOKEN = '8948678531:AAGPocItVNaxhjcSLl9TuC_mCJ9tzHaKMkw'
-bot = telebot.TeleBot(TOKEN)
+logging.basicConfig(level=logging.INFO)
 
-ADMIN_ID = 740442241   # ← ЗАМІНИ
+TOKEN = os.getenv("8948678531:AAGPocItVNaxhjcSLl9TuC_mCJ9tzHaKMkw")  # Буде брати з змінних Render
+ADMIN_ID = 740442241            # ← ЗАМІНИ НА СВІЙ ID
 
+bot = Bot(token=TOKEN)
+dp = Dispatcher()
+
+# ====================== КОНТЕНТ ======================
 content = {
-    "kasir_complaints": {"text": "ЖАЛОБИ GOOGLE CHOICE\n\nТекст відсутній", "photo": None, "video": None},
-    "kasir_duties": {"text": "ОБОВ'ЯЗКИ КАСИРА\n\nТекст відсутній", "photo": None, "video": None},
-    "kasir_poster": {"text": "ПОСТЕР\n\nТекст відсутній", "photo": None, "video": None},
-    "kasir_orders": {"text": "ПРИЙОМ ЗАМОВЛЕНЬ\n\nТекст відсутній", "photo": None, "video": None},
-    
-    "courier": {"text": "КУР'ЄРИ\n\nТекст відсутній", "photo": None, "video": None},
-    "logist": {"text": "ЛОГІСТ\n\nТекст відсутній", "photo": None, "video": None},
-    
-    "sushi_instruction": {"text": "ІНСТРУКЦІЯ\n\nТекст відсутній", "photo": None, "video": None},
-    "sushi_internship": {"text": "СТАЖИРОВКА\n\nТекст відсутній", "photo": None, "video": None},
-    
-    "manager_gen_cleaning": {"text": "ГЕНЕРАЛЬНЕ ПРИБИРАННЯ\n\nТекст відсутній", "photo": None, "video": None},
-    "manager_complaints": {"text": "ЖАЛОБИ\n\nТекст відсутній", "photo": None, "video": None},
-    "manager_instruction": {"text": "ІНСТРУКЦІЯ\n\nТекст відсутній", "photo": None, "video": None},
-    "manager_emergency": {"text": "НЕШТАТНІ СИТУАЦІЇ\n\nТекст відсутній", "photo": None, "video": None},
-    "manager_internship": {"text": "СТАЖИРОВКА\n\nТекст відсутній", "photo": None, "video": None},
+    "kasir_complaints": {"text": "ЖАЛОБИ GOOGLE CHOICE\n\nТекст відсутній", "photo": None},
+    "kasir_duties": {"text": "ОБОВ'ЯЗКИ\n\nТекст відсутній", "photo": None},
+    "kasir_poster": {"text": "ПОСТЕР\n\nТекст відсутній", "photo": None},
+    "kasir_orders": {"text": "ПРИЙОМ ЗАМОВЛЕНЬ\n\nТекст відсутній", "photo": None},
+    "courier": {"text": "КУР'ЄРИ\n\nТекст відсутній", "photo": None},
+    "logist": {"text": "ЛОГІСТ\n\nТекст відсутній", "photo": None},
+    "sushi_instruction": {"text": "ІНСТРУКЦІЯ\n\nТекст відсутній", "photo": None},
+    "sushi_internship": {"text": "СТАЖИРОВКА\n\nТекст відсутній", "photo": None},
+    "manager_gen_cleaning": {"text": "ГЕНЕРАЛЬНЕ ПРИБИРАННЯ\n\nТекст відсутній", "photo": None},
+    "manager_complaints": {"text": "ЖАЛОБИ\n\nТекст відсутній", "photo": None},
+    "manager_instruction": {"text": "ІНСТРУКЦІЯ\n\nТекст відсутній", "photo": None},
+    "manager_emergency": {"text": "НЕШТАТНІ СИТУАЦІЇ\n\nТекст відсутній", "photo": None},
+    "manager_internship": {"text": "СТАЖИРОВКА\n\nТекст відсутній", "photo": None},
 }
 
 user_state = {}
 
-ROLES = {
-    "kasir": {"name": "Касир", "password": "1111"},
-    "sushi": {"name": "Сушіст", "password": "2222"},
-    "manager": {"name": "Управляючий", "password": "1212"}
-}
-
-sections = {
-    "kasir_complaints": "Касир → Жалобы Google Choice",
-    "kasir_duties": "Касир → Обов'язки",
-    "kasir_poster": "Касир → Постер",
-    "kasir_orders": "Касир → Прийом замовлень",
-    "courier": "Кур'єри",
-    "logist": "Логіст",
-    "sushi_instruction": "Сушіст → Інструкція",
-    "sushi_internship": "Сушіст → Стажировка",
-    "manager_gen_cleaning": "Управляючий → Ген. Уборка",
-    "manager_complaints": "Управляючий → Жалобы",
-    "manager_instruction": "Управляючий → Інструкція",
-    "manager_emergency": "Управляючий → Нештатні ситуації",
-    "manager_internship": "Управляючий → Стажировка"
-}
-
+# ====================== МЕНЮ ======================
 def main_menu():
-    markup = types.InlineKeyboardMarkup(row_width=1)
-    markup.add(types.InlineKeyboardButton("👨‍💼 Касир", callback_data="role_kasir"))
-    markup.add(types.InlineKeyboardButton("🚴 Кур'єри", callback_data="role_courier"))
-    markup.add(types.InlineKeyboardButton("📦 Логіст", callback_data="role_logist"))
-    markup.add(types.InlineKeyboardButton("🍣 Сушіст", callback_data="role_sushi"))
-    markup.add(types.InlineKeyboardButton("👔 Управляючий", callback_data="role_manager"))
-    return markup
+    kb = [
+        [InlineKeyboardButton(text="👨‍💼 Касир", callback_data="role_kasir")],
+        [InlineKeyboardButton(text="🚴 Кур'єри", callback_data="role_courier")],
+        [InlineKeyboardButton(text="📦 Логіст", callback_data="role_logist")],
+        [InlineKeyboardButton(text="🍣 Сушіст", callback_data="role_sushi")],
+        [InlineKeyboardButton(text="👔 Управляючий", callback_data="role_manager")]
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=kb)
 
-def kasir_menu():
-    markup = types.InlineKeyboardMarkup(row_width=1)
-    markup.add(types.InlineKeyboardButton("Жалобы Google Choice", callback_data="kasir_complaints"))
-    markup.add(types.InlineKeyboardButton("Обов'язки", callback_data="kasir_duties"))
-    markup.add(types.InlineKeyboardButton("Постер", callback_data="kasir_poster"))
-    markup.add(types.InlineKeyboardButton("Прийом замовлень", callback_data="kasir_orders"))
-    markup.add(types.InlineKeyboardButton("🏠 На головну", callback_data="main_menu"))
-    return markup
-
-def sushi_menu():
-    markup = types.InlineKeyboardMarkup(row_width=1)
-    markup.add(types.InlineKeyboardButton("Інструкція", callback_data="sushi_instruction"))
-    markup.add(types.InlineKeyboardButton("Стажировка", callback_data="sushi_internship"))
-    markup.add(types.InlineKeyboardButton("🏠 На головну", callback_data="main_menu"))
-    return markup
-
-def manager_menu():
-    markup = types.InlineKeyboardMarkup(row_width=1)
-    markup.add(types.InlineKeyboardButton("Ген. Уборка", callback_data="manager_gen_cleaning"))
-    markup.add(types.InlineKeyboardButton("Жалобы", callback_data="manager_complaints"))
-    markup.add(types.InlineKeyboardButton("Інструкція", callback_data="manager_instruction"))
-    markup.add(types.InlineKeyboardButton("Нештатні ситуації", callback_data="manager_emergency"))
-    markup.add(types.InlineKeyboardButton("Стажировка", callback_data="manager_internship"))
-    markup.add(types.InlineKeyboardButton("🏠 На головну", callback_data="main_menu"))
-    return markup
-
-def admin_main_menu():
-    markup = types.InlineKeyboardMarkup(row_width=1)
-    markup.add(types.InlineKeyboardButton("✏️ Редагувати контент", callback_data="admin_edit_content"))
-    markup.add(types.InlineKeyboardButton("🏠 Головне меню", callback_data="main_menu"))
-    return markup
-
-@bot.message_handler(commands=['start'])
-def start(message):
+# ====================== START ======================
+@dp.message(Command("start"))
+async def start_cmd(message: types.Message):
     if message.from_user.id == ADMIN_ID:
-        bot.send_message(message.chat.id, "👑 **АДМІН ПАНЕЛЬ**", parse_mode='Markdown')
-        bot.send_message(message.chat.id, "Оберіть дію:", reply_markup=admin_main_menu())
+        await message.answer("👑 Адмін панель активована", reply_markup=main_menu())
     else:
-        bot.send_message(message.chat.id, "👋 Ласкаво просимо!\n\nОберіть свою роль:", reply_markup=main_menu())
+        await message.answer("👋 Ласкаво просимо!\nОберіть свою роль:", reply_markup=main_menu())
 
-@bot.callback_query_handler(func=lambda call: True)
-def callback_handler(call):
-    user_id = call.from_user.id
-    data = call.data
+# ====================== CALLBACK ======================
+@dp.callback_query()
+async def callback_handler(callback: types.CallbackQuery):
+    data = callback.data
+    user_id = callback.from_user.id
 
-    if data == "main_menu":
-        if user_id == ADMIN_ID:
-            bot.edit_message_text("Оберіть дію:", call.message.chat.id, call.message.message_id, reply_markup=admin_main_menu())
-        else:
-            bot.edit_message_text("Оберіть свою роль:", call.message.chat.id, call.message.message_id, reply_markup=main_menu())
-        user_state.pop(user_id, None)
-        return
-
-    # Захищені ролі
+    # Ролі з паролем
     if data in ["role_kasir", "role_sushi", "role_manager"]:
-        role_key = data.split("_")[1]
-        bot.edit_message_text(f"🔐 Введіть пароль для **{ROLES[role_key]['name']}**:", 
-                            call.message.chat.id, call.message.message_id, parse_mode='Markdown')
-        user_state[user_id] = {"step": "waiting_password", "role": role_key}
+        role = data.split("_")[1]
+        user_state[user_id] = {"step": "password", "role": role}
+        await callback.message.edit_text(f"🔐 Введіть пароль для {role.upper()}:")
         return
 
-    # Ролі без пароля
-    if data in ["role_courier", "role_logist"]:
-        key = "courier" if data == "role_courier" else "logist"
-        item = content[key]
-        if item.get("photo"):
-            bot.send_photo(call.message.chat.id, item["photo"], caption=item["text"], parse_mode='Markdown')
-        elif item.get("video"):
-            bot.send_video(call.message.chat.id, item["video"], caption=item["text"], parse_mode='Markdown')
-        else:
-            bot.send_message(call.message.chat.id, item["text"], parse_mode='Markdown')
-        return
-
-    # Адмін панель
-    if user_id == ADMIN_ID and data == "admin_edit_content":
-        markup = types.InlineKeyboardMarkup(row_width=1)
-        for key, name in sections.items():
-            markup.add(types.InlineKeyboardButton(name, callback_data=f"edit_{key}"))
-        bot.edit_message_text("Оберіть розділ:", call.message.chat.id, call.message.message_id, reply_markup=markup)
-        return
-
-    if user_id == ADMIN_ID and data.startswith("edit_"):
-        section = data[5:]
-        user_state[user_id] = {"action": "edit_section", "section": section}
-        markup = types.InlineKeyboardMarkup(row_width=2)
-        markup.add(types.InlineKeyboardButton("Змінити текст", callback_data="change_text"))
-        markup.add(types.InlineKeyboardButton("Завантажити фото", callback_data="change_photo"))
-        markup.add(types.InlineKeyboardButton("Завантажити відео", callback_data="change_video"))
-        markup.add(types.InlineKeyboardButton("Назад", callback_data="admin_edit_content"))
-        bot.edit_message_text(f"Редагуємо:\n**{sections[section]}**", call.message.chat.id, call.message.message_id, parse_mode='Markdown')
-        bot.send_message(call.message.chat.id, "Оберіть дію:", reply_markup=markup)
-        return
-
-    if user_id == ADMIN_ID and data in ["change_text", "change_photo", "change_video"]:
-        user_state[user_id]["sub_action"] = data
-        if data == "change_text":
-            bot.send_message(call.message.chat.id, "Надішліть новий текст:")
-        elif data == "change_photo":
-            bot.send_message(call.message.chat.id, "Надішліть нове фото:")
-        elif data == "change_video":
-            bot.send_message(call.message.chat.id, "Надішліть нове відео:")
-        return
-
-    # === ВІДОВЖЕННЯ КОНТЕНТУ (ВИПРАВЛЕНО) ===
+    # Відображення контенту
     if data in content:
         item = content[data]
-        text = item["text"] or "Текст відсутній"
-        
-        try:
-            if item.get("photo"):
-                bot.send_photo(call.message.chat.id, item["photo"], caption=text, parse_mode='Markdown')
-            elif item.get("video"):
-                bot.send_video(call.message.chat.id, item["video"], caption=text, parse_mode='Markdown')
-            else:
-                bot.send_message(call.message.chat.id, text, parse_mode='Markdown')
-        except Exception as e:
-            bot.send_message(call.message.chat.id, text, parse_mode='Markdown')
+        if item["photo"]:
+            await callback.message.answer_photo(item["photo"], caption=item["text"])
+        else:
+            await callback.message.answer(item["text"])
+        return
 
-@bot.message_handler(content_types=['text', 'photo', 'video'])
-def handle_input(message):
+@dp.message()
+async def handle_message(message: types.Message):
     user_id = message.from_user.id
     if user_id not in user_state:
         return
 
     state = user_state[user_id]
+    if state.get("step") == "password":
+        # Тут можна додати перевірку пароля
+        await message.answer("✅ Доступ дозволено (тимчасово)")
+        user_state.pop(user_id)
 
-    if state.get("step") == "waiting_password":
-        role = state["role"]
-        if message.text.strip() == ROLES[role]["password"]:
-            bot.send_message(message.chat.id, f"✅ Доступ дозволено!\n**{ROLES[role]['name']}**", parse_mode='Markdown')
-            if role == "kasir":
-                bot.send_message(message.chat.id, "Оберіть розділ:", reply_markup=kasir_menu())
-            elif role == "sushi":
-                bot.send_message(message.chat.id, "Оберіть розділ:", reply_markup=sushi_menu())
-            elif role == "manager":
-                bot.send_message(message.chat.id, "Оберіть розділ:", reply_markup=manager_menu())
-        else:
-            bot.send_message(message.chat.id, "❌ Неправильний пароль.")
-        return
+# ====================== ЗАПУСК ======================
+async def main():
+    # Webhook налаштування
+    await bot.delete_webhook(drop_pending_updates=True)
+    await dp.start_polling(bot)
 
-    # Редагування адміном
-    if "sub_action" in state:
-        section = state["section"]
-        if state["sub_action"] == "change_text":
-            content[section]["text"] = message.text
-            bot.send_message(message.chat.id, "✅ Текст оновлено!")
-        elif state["sub_action"] == "change_photo" and message.photo:
-            content[section]["photo"] = message.photo[-1].file_id
-            content[section]["video"] = None
-            bot.send_message(message.chat.id, "✅ Фото успішно завантажено!")
-        elif state["sub_action"] == "change_video" and message.video:
-            content[section]["video"] = message.video.file_id
-            content[section]["photo"] = None
-            bot.send_message(message.chat.id, "✅ Відео успішно завантажено!")
-
-        user_state[user_id] = {"action": "edit_section", "section": section}
-
-print("🤖 Бот запущений...")
-bot.infinity_polling()
+if __name__ == "__main__":
+    asyncio.run(main())
