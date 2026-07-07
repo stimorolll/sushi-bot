@@ -51,7 +51,6 @@ def init_db():
     }
     
     try:
-        # Проверяем количество записей
         response = supabase.table("bot_content").select("count", count="exact").execute()
         if response.count == 0:
             for key, text in default_content.items():
@@ -60,7 +59,7 @@ def init_db():
                 }).execute()
             print("База данных Supabase успешно инициализирована базовыми текстами.")
     except Exception as e:
-        print(f"⚠️ Подсказка: Убедись, что в Supabase создана таблица 'bot_content'. Ошибка: {e}")
+        print(f"⚠️ Ошибка инициализации (убедись, что таблица создана через SQL Editor): {e}")
 
 def load_content(key):
     """Загружает контент секции из Supabase"""
@@ -216,7 +215,7 @@ def callback_handler(call):
     if user_id == ADMIN_ID and data in ["change_text", "change_photo", "change_video"]:
         user_state[user_id]["sub_action"] = data
         if data == "change_text":
-            bot.send_message(call.message.chat.id, "Надішліть новий текст:")
+            bot.send_message(call.message.chat.id, "Надішліть новый текст:")
         elif data == "change_photo":
             bot.send_message(call.message.chat.id, "Надішліть нове фото:")
         elif data == "change_video":
